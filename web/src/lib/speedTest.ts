@@ -1,5 +1,18 @@
 export type Phase = "idle" | "ping" | "download" | "upload" | "done";
 
+/**
+ * Base URL prefixed onto every API call. Empty by default, which keeps
+ * requests relative ("/api/...") for a same-origin deployment — the normal
+ * case, where this Express server also serves the built frontend.
+ *
+ * Set VITE_API_BASE_URL when the frontend and backend are hosted separately
+ * (e.g. frontend on Vercel/Netlify, backend on Render/Railway) so requests
+ * go to the backend's actual origin instead of 404ing against whatever
+ * static host is serving the page. No trailing slash — set it to
+ * "https://your-backend.onrender.com", not ".../".
+ */
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+
 export interface ClientInfo {
   ip: string;
   isp: string;
@@ -123,7 +136,7 @@ export async function fetchClientInfo(signal?: AbortSignal): Promise<ClientInfo>
     // Resolved by our own server (which sees the real client IP) rather than
     // the browser calling a third party directly — same-origin, so it can't
     // be blocked by CSP/CORS/ad-blockers the way a cross-origin fetch can.
-    fetch("/api/whoami", { signal, cache: "no-store" }).then((res) => {
+    fetch(`${API_BASE}/api/whoami`, { signal, cache: "no-store" }).then((res) => {
       if (!res.ok) throw new Error(`status ${res.status}`);
       return res.json();
     }),
@@ -149,7 +162,7 @@ export async function fetchClientInfo(signal?: AbortSignal): Promise<ClientInfo>
  * network time the browser itself observed.
  */
 async function pingOnce(signal?: AbortSignal): Promise<number> {
-  const url = `/api/ping?_=${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const url = `${API_BASE}/api/ping?_=${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const wallStart = performance.now();
   await fetch(url, { cache: "no-store", signal });
   const wallElapsed = performance.now() - wallStart;
@@ -401,7 +414,7 @@ export async function measureDownload(
   return runTransfer(
     DOWNLOAD_STREAMS,
     async (streamSignal, onBytes) => {
-      const url = `/api/download?bytes=${DOWNLOAD_CHUNK_BYTES}&_=${Math.random()
+      const url = `${API_BASE}/api/download?bytes=${DOWNLOAD_CHUNK_BYTES}&_=${Math.random()
         .toString(36)
         .slice(2)}`;
       const res = await fetch(url, { signal: streamSignal, cache: "no-store" });
@@ -482,7 +495,7 @@ export async function measureUpload(
           resolve();
         });
 
-        xhr.open("POST", "/api/upload");
+        xhr.open("POST", `${API_BASE}/api/upload`);
         xhr.setRequestHeader("Content-Type", "application/octet-stream");
         xhr.send(payload);
       }),

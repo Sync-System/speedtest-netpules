@@ -4,6 +4,7 @@ import cors from "cors";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
 import crypto from "node:crypto";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,7 +14,13 @@ const WEB_DIST = path.join(__dirname, "../web/dist");
 const app = express();
 const PORT = process.env.PORT || 8787;
 const isProd = process.env.NODE_ENV === "production";
-const allowedOrigin = process.env.ALLOWED_ORIGIN || "http://localhost:5173";
+// Comma-separated so a split deployment (frontend on Vercel/Netlify, this
+// server elsewhere) can allow both the production domain and Vercel's
+// per-branch preview URLs without redeploying the backend for each one.
+const allowedOrigins = (process.env.ALLOWED_ORIGIN || "http://localhost:5173")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 app.disable("x-powered-by");
 // Trust exactly one hop (the tunnel/reverse proxy in front of us) so req.ip
@@ -46,7 +53,7 @@ app.use(
 );
 app.use(
   cors({
-    origin: isProd ? allowedOrigin : true,
+    origin: isProd ? allowedOrigins : true,
   }),
 );
 
@@ -261,7 +268,14 @@ app.post("/api/upload", testLimiter, (req, res) => {
   });
 });
 
-if (isProd) {
+// Only serves the built frontend if it's actually present next to this
+// server — true for the same-origin deploy (Render/Railway build both
+// workspaces together). In a backend-only deploy (this server on Vercel,
+// frontend hosted separately on Netlify/another Vercel project), web/dist
+// was never built here, so skip straight to being a pure API — trying to
+// serve a missing index.html would 500 on every request instead of just
+// not offering a page that isn't this deployment's job.
+if (isProd && fs.existsSync(path.join(WEB_DIST, "index.html"))) {
   app.use(express.static(WEB_DIST, { maxAge: "1y", index: false }));
   app.get(/.*/, (req, res) => {
     // This is a single-view app — "/" is the only real page. Anything else
@@ -275,6 +289,16 @@ if (isProd) {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`Speed test server listening on http://localhost:${PORT}`);
-});
+// Vercel's Node runtime imports this file for its exported handler and
+// invokes it per-request — it does not run app.listen() itself, and binding
+// a port there would just error. Render/Railway/local dev, by contrast, run
+// this file directly as a long-lived process, which is what app.listen()
+// starts. `VERCEL` is set automatically in Vercel's function environment, so
+// this picks the right mode without needing a separate entry point per host.
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Speed test server listening on http://localhost:${PORT}`);
+  });
+}
+
+export default app;
