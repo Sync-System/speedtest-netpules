@@ -13,13 +13,6 @@ const WEB_DIST = path.join(__dirname, "../web/dist");
 
 const app = express();
 const isProd = process.env.NODE_ENV === "production";
-// Comma-separated so a split deployment (frontend on Vercel/Netlify, this
-// server elsewhere) can allow both the production domain and Vercel's
-// per-branch preview URLs without redeploying the backend for each one.
-const allowedOrigins = (process.env.ALLOWED_ORIGIN || "http://localhost:5173")
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
 
 app.disable("x-powered-by");
 // Trust exactly one hop (the tunnel/reverse proxy in front of us) so req.ip
@@ -50,11 +43,14 @@ app.use(
     filter: (req, res) => !req.path.startsWith("/api/") && compression.filter(req, res),
   }),
 );
-app.use(
-  cors({
-    origin: isProd ? allowedOrigins : true,
-  }),
-);
+// Open to any origin, deliberately. None of these endpoints use cookies or
+// sessions — /api/ping, /api/whoami, /api/download, /api/upload are all
+// unauthenticated and don't vary per caller's identity, so there's no
+// credentialed data a stricter allow-list would actually be protecting.
+// (We tried an allow-list keyed off ALLOWED_ORIGIN first; chasing exact
+// origin-string matches and Vercel env var propagation timing wasn't worth
+// it for an API with nothing origin-specific to protect.)
+app.use(cors({ origin: true }));
 
 app.use((req, res, next) => {
   const start = Date.now();
