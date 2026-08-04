@@ -1,0 +1,8 @@
+# NetPulse — Free Internet Speed Test
+User-agent: *
+Allow: /
+
+# REPLACE the placeholder domain below with the real production domain
+# before launch — Google Search Console verification and the sitemap
+# link both need it to be correct, not a leftover dev URL.
+Sitemap: https://your-domain.example/sitemap.xml
