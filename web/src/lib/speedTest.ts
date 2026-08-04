@@ -66,7 +66,17 @@ const UPLOAD_STREAMS = 4;
  * a multi-gigabit link needs only a handful of requests per phase.
  */
 const DOWNLOAD_CHUNK_BYTES = 200 * 1024 * 1024; // the server's hard cap
-const UPLOAD_CHUNK_BYTES = 64 * 1024 * 1024;
+/**
+ * Kept well under 4.5 MiB, not chosen for TCP-warmup reasons like the
+ * download chunk above. Serverless hosts (Vercel, and most others) cap
+ * incoming request body size — commonly ~4.5 MiB — and reject anything
+ * larger before it reaches our Express handler at all. A too-large chunk
+ * here doesn't measure a slow upload; every attempt fails identically, so
+ * the reported speed is a flat, suspiciously steady 0 regardless of the
+ * real connection. Response *streaming* (the download side) isn't subject
+ * to the same limit, which is why only this constant needs to respect it.
+ */
+const UPLOAD_CHUNK_BYTES = 4 * 1024 * 1024;
 
 /**
  * TCP starts slow (slow-start) and ramps toward the path's capacity. Bytes
