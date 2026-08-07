@@ -12,6 +12,7 @@ import {
   type TestResult,
 } from "./speedTest";
 import { detectDevice } from "./device";
+import { measurePacketLoss, type PacketLossResult } from "./packetLoss";
 
 /**
  * Weight given to each new throughput sample when updating the live readout.
@@ -36,6 +37,7 @@ export function useSpeedTest() {
   const [pingMs, setPingMs] = useState<number | null>(null);
   const [jitterMs, setJitterMs] = useState<number | null>(null);
   const [loadedPingMs, setLoadedPingMs] = useState<number | null>(null);
+  const [packetLoss, setPacketLoss] = useState<PacketLossResult>(null);
 
   const [downloadMbps, setDownloadMbps] = useState(0);
   const [downloadFinal, setDownloadFinal] = useState<RateSummary | null>(null);
@@ -58,6 +60,7 @@ export function useSpeedTest() {
     setPingMs(null);
     setJitterMs(null);
     setLoadedPingMs(null);
+    setPacketLoss(null);
     setDownloadMbps(0);
     setDownloadFinal(null);
     setDownloadFraction(0);
@@ -107,6 +110,14 @@ export function useSpeedTest() {
       setUploadMbps(ul.mbps);
 
       setPhase("done");
+
+      // Deliberately after "done": the numbers people came for are on screen
+      // and the run reads as finished, while this fills in a moment later. It
+      // needs an idle link to be meaningful anyway — probing for loss while we
+      // were still saturating the pipe would measure our own test, not the
+      // connection. Never awaited into the critical path, and it resolves to
+      // null rather than throwing, so it cannot fail the run.
+      measurePacketLoss(controller.signal).then(setPacketLoss).catch(() => {});
       setHistory(
         saveHistoryEntry({
           timestamp: Date.now(),
@@ -132,6 +143,7 @@ export function useSpeedTest() {
     pingMs,
     jitterMs,
     loadedPingMs,
+    packetLoss,
     downloadMbps,
     downloadFinal,
     downloadFraction,

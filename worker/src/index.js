@@ -92,6 +92,13 @@ function bytesStream(total) {
       controller.enqueue(buf.subarray(0, size));
       sent += size;
     },
+    // The client abandons every download stream the moment its measurement
+    // window closes, so cancellation is the normal way these end, not a fault.
+    // Declaring the handler means the runtime tears the stream down cleanly
+    // instead of treating a routine disconnect as an unhandled stream error.
+    cancel() {
+      sent = total;
+    },
   });
 }
 
@@ -177,8 +184,51 @@ function handleWhoami(request) {
   });
 }
 
+/**
+ * Mints short-lived TURN credentials for the packet-loss probe.
+ *
+ * Packet loss can't be seen over TCP — it retransmits silently, so a lossy link
+ * just looks slow. Measuring it needs UDP, which from a browser means WebRTC
+ * over a TURN relay. Cloudflare's own `speed.cloudflare.com/turn-creds` returns
+ * 403 to anyone off their domain, so the probe needs a relay we're entitled to
+ * use; this mints credentials against our own TURN key.
+ *
+ * The key's API token never leaves the Worker. It's a `wrangler secret`, not a
+ * var and not something the client is ever handed — the browser only receives
+ * a credential that expires. Embedding the long-lived token in the bundle would
+ * publish it to every visitor.
+ *
+ * Unconfigured is a normal state, not an error: without the secret this returns
+ * 501 and the client quietly reports loss as unknown rather than failing a run.
+ */
+async function handleTurnCreds(env) {
+  if (!env.TURN_KEY_ID || !env.TURN_KEY_API_TOKEN) {
+    return corsJson({ error: "turn not configured" }, { status: 501 });
+  }
+
+  const res = await fetch(
+    `https://rtc.live.cloudflare.com/v1/turn/keys/${env.TURN_KEY_ID}/credentials/generate-ice-servers`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.TURN_KEY_API_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      // Only has to outlive one probe, which takes seconds. A short TTL keeps
+      // a leaked credential worthless almost immediately.
+      body: JSON.stringify({ ttl: 600 }),
+    },
+  );
+
+  if (!res.ok) {
+    return corsJson({ error: "turn credential request failed" }, { status: 502 });
+  }
+
+  return corsJson(await res.json());
+}
+
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {
@@ -203,6 +253,9 @@ export default {
 
       case "/api/whoami":
         return handleWhoami(request);
+
+      case "/api/turn-creds":
+        return handleTurnCreds(env);
 
       default:
         return corsJson({ error: "not found" }, { status: 404 });

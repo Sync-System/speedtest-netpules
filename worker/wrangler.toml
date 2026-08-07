@@ -15,5 +15,17 @@ compatibility_date = "2026-08-01"
 # pattern = "speedtest4u.com/api/*"
 # zone_name = "speedtest4u.com"
 
+# Packet loss is OPTIONAL and off until these two secrets exist. Without them
+# /api/turn-creds answers 501 and the UI simply omits the packet-loss tile —
+# every other metric works exactly the same.
+#
+# Cloudflare's own turn-creds endpoint returns 403 off their domain, so the
+# probe needs a TURN key of your own. Create one under Realtime -> TURN in the
+# dashboard, then set both from YOUR terminal (they are secrets — never commit
+# them, and never put them in [vars], which ships them to the client):
+#
+#   npx wrangler secret put TURN_KEY_ID       -w worker
+#   npx wrangler secret put TURN_KEY_API_TOKEN -w worker
+
 [observability]
 enabled = true

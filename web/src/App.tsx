@@ -61,6 +61,7 @@ function App() {
     pingMs,
     jitterMs,
     loadedPingMs,
+    packetLoss,
     downloadMbps,
     downloadFinal,
     downloadFraction,
@@ -130,6 +131,7 @@ function App() {
             pingMs={pingMs}
             jitterMs={jitterMs}
             loadedPingMs={loadedPingMs}
+            packetLoss={packetLoss}
             downloadFinal={downloadFinal}
             uploadFinal={uploadFinal}
           />

@@ -1,10 +1,12 @@
-import { ArrowDown, ArrowUp, Timer, Waves } from "lucide-react";
+import { ArrowDown, ArrowUp, PackageX, Timer, Waves } from "lucide-react";
 import type { RateSummary, Stability } from "../lib/speedTest";
 
 interface ResultsRowProps {
   pingMs: number | null;
   jitterMs: number | null;
   loadedPingMs: number | null;
+  /** Ratio 0–1, or null while probing / when the probe couldn't run. */
+  packetLoss: number | null;
   downloadFinal: RateSummary | null;
   uploadFinal: RateSummary | null;
 }
@@ -97,13 +99,28 @@ function RateMetric({
   );
 }
 
+/**
+ * Loss is reported at a precision the sample size can support. 500 packets
+ * resolve to 0.2%, so "0.37%" would be inventing a digit; anything that did
+ * arrive lossless is stated plainly as "None" rather than a decorative 0.00%.
+ */
+function formatLoss(ratio: number): { value: string; detail: string } {
+  const pct = ratio * 100;
+  if (pct <= 0) return { value: "None", detail: "no packets lost" };
+  if (pct < 1) return { value: `${pct.toFixed(1)}%`, detail: "slight loss" };
+  if (pct < 2.5) return { value: `${pct.toFixed(1)}%`, detail: "calls may stutter" };
+  return { value: `${pct.toFixed(1)}%`, detail: "poor for calls & gaming" };
+}
+
 export function ResultsRow({
   pingMs,
   jitterMs,
   loadedPingMs,
+  packetLoss,
   downloadFinal,
   uploadFinal,
 }: ResultsRowProps) {
+  const loss = packetLoss != null ? formatLoss(packetLoss) : null;
   // How much latency the path adds once it's saturated. A large gap means an
   // over-buffered link: high Mbps but laggy calls during a download.
   const bloatMs = pingMs != null && loadedPingMs != null ? loadedPingMs - pingMs : null;
@@ -120,7 +137,15 @@ export function ResultsRow({
     // a scale), then the two ms latency numbers. In the previous order
     // download and upload landed diagonally opposite each other on the
     // two-column mobile layout, which is the one comparison that must be easy.
-    <div className="grid w-full max-w-3xl grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+    // Five tiles don't divide into two columns, so the mobile layout goes to
+    // three across once loss is in play rather than stranding a lone tile on a
+    // final row. Below sm the grid only widens when there's actually a fifth
+    // tile to place — with four, two columns still reads better.
+    <div
+      className={`grid w-full max-w-3xl grid-cols-2 gap-3 sm:gap-4 ${
+        loss ? "grid-cols-3 sm:grid-cols-5" : "sm:grid-cols-4"
+      }`}
+    >
       <RateMetric
         icon={<ArrowDown size={15} />}
         label="Download"
@@ -145,6 +170,17 @@ export function ResultsRow({
         value={loadedPingMs != null ? loadedPingMs.toFixed(0) : "—"}
         detail={loadDetail}
       />
+      {/* Only mounted once there's a real answer. Loss resolves a few seconds
+          after the test reads "complete", and a tile sitting on "—" would look
+          like a measurement that failed rather than one still arriving. */}
+      {loss && (
+        <Metric
+          icon={<PackageX size={15} />}
+          label="Packet loss"
+          value={loss.value}
+          detail={loss.detail}
+        />
+      )}
     </div>
   );
 }
