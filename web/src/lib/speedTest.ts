@@ -324,6 +324,25 @@ function summarize(headlineMbps: number, samples: number[]): {
 
 type ProgressFn = (instantMbps: number, fractionDone: number) => void;
 
+/** setTimeout that also resolves on abort, so nothing outlives its phase. */
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const done = () => {
+      clearTimeout(id);
+      signal.removeEventListener("abort", done);
+      resolve();
+    };
+    const id = setTimeout(done, ms);
+    signal.addEventListener("abort", done, { once: true });
+  });
+}
+
+/**
+ * Latency probes taken while the link is saturated — the bufferbloat signal.
+ * Three is enough to take a median without the probe itself becoming traffic.
+ */
+const LOADED_PING_SAMPLES = 3;
+
 /**
  * Shared engine for both directions. Runs N streams concurrently, restarting
  * each as it drains so the pipe never goes idle mid-measurement, and reports
@@ -360,7 +379,10 @@ async function runTransfer(
         // rate limiter, so back off exponentially.
         consecutiveFailures++;
         const delay = Math.min(2000, 100 * 2 ** (consecutiveFailures - 1));
-        await new Promise((r) => setTimeout(r, delay));
+        // Abort-aware: a plain setTimeout here kept sleeping after the phase
+        // had already ended, so a stream that happened to be mid-backoff held
+        // the whole run open for up to another 2s before it noticed.
+        await sleep(delay, controller.signal);
       }
     }
   };
@@ -402,6 +424,32 @@ async function runTransfer(
         windowStartBytes = totalBytes;
         bucketStartAt = now;
         bucketStartBytes = totalBytes;
+
+        // Probe latency HERE, inside the measured window, rather than after it.
+        //
+        // This used to run as three sequential awaits once the window closed,
+        // while the streams were still saturating the link — so each probe took
+        // exactly as long as the bufferbloat it was measuring, and the user sat
+        // watching a finished download gauge for the sum of all three. A run
+        // that reported 2445ms of loaded latency spent ~7.3s doing nothing
+        // visible before upload started. The worse someone's connection, the
+        // longer the app appeared to hang on them.
+        //
+        // Deliberately not awaited: samples land in loadedPings as they arrive,
+        // the phase ends on schedule regardless, and whatever completed in time
+        // is what gets reported. It's also the more correct place to measure —
+        // during genuine saturation rather than in the tail as streams wind down.
+        if (probeLoadedLatency) {
+          void (async () => {
+            while (!controller.signal.aborted && loadedPings.length < LOADED_PING_SAMPLES) {
+              try {
+                loadedPings.push(await pingOnce(controller.signal));
+              } catch {
+                return;
+              }
+            }
+          })();
+        }
       }
 
       // Coarse buckets, for the reported range.
@@ -418,21 +466,8 @@ async function runTransfer(
     }, SAMPLE_INTERVAL_MS);
   });
 
-  // Latency under load, sampled once the pipe is saturated. This is the
-  // bufferbloat signal: if it's far above idle ping, the path is over-buffered
-  // and the connection will feel laggy during downloads even at high Mbps.
   const measuredWindowStart = windowStart;
   const measuredWindowBytes = windowStartBytes;
-  if (probeLoadedLatency && !controller.signal.aborted) {
-    for (let i = 0; i < 3; i++) {
-      try {
-        loadedPings.push(await pingOnce(controller.signal));
-      } catch {
-        break;
-      }
-    }
-  }
-
   const windowEnd = performance.now();
   controller.abort();
   await Promise.allSettled(streams);
