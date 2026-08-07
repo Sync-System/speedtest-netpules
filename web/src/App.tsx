@@ -5,6 +5,7 @@ import { ConnectionInfo } from "./components/ConnectionInfo";
 import { ResultsRow } from "./components/ResultsRow";
 import { History } from "./components/History";
 import { Footer } from "./components/Footer";
+import { AdSlot } from "./components/AdSlot";
 import { useSpeedTest } from "./lib/useSpeedTest";
 import { useIntroSweep } from "./lib/useIntroSweep";
 
@@ -137,8 +138,31 @@ function App() {
           />
         )}
 
+        {/* The best position on this page, and it earns that by sitting BELOW
+            the gauge rather than above it.
+            A test costs the visitor ~17 seconds of watching a needle, and this
+            slot is what's under it while they wait — then it's what sits beside
+            the answer once the run finishes. Both are high-attention moments
+            the ad gets for free, without ever standing between someone and the
+            GO button. Deliberately NOT placed above the gauge: pushing the core
+            action down the page to surface an ad is the exact pattern Google's
+            own landing-page review penalises, so it would cost traffic to buy
+            impressions. Always mounted, so nothing shifts when a run starts. */}
         <Reveal delay={200}>
+          <AdSlot id="results" format="rectangle" />
+        </Reveal>
+
+        <Reveal delay={300}>
           <History history={history} />
+        </Reveal>
+
+        {/* Second and last unit. Two is the ceiling on a page this light on
+            text — more would tip it toward the "ads outweigh content" judgement
+            that gets utility sites rejected, and the third slot on a page like
+            this earns little anyway. Reached only by someone already scrolling
+            past their result, so it interrupts nothing. */}
+        <Reveal delay={350}>
+          <AdSlot id="footer" format="leaderboard" />
         </Reveal>
       </main>
 
