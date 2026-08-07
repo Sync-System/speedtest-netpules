@@ -54,9 +54,18 @@ const PING_SAMPLES = 10;
  * plateaus far below line rate no matter how fast the link is. Real speed
  * tests open several streams and sum them; this is the single biggest
  * accuracy factor for fast connections.
+ *
+ * Configurable per-deployment because that accuracy assumption only holds on
+ * a host that can actually run several concurrent invocations: tested
+ * directly against a Vercel Hobby backend, 4 concurrent upload streams ALL
+ * timed out together, while the exact same request one at a time (including
+ * back-to-back, up to 4 MiB) succeeded every time in a few milliseconds —
+ * a hard concurrency ceiling, not a size or CORS problem. A persistent-server
+ * host (Render/Railway/Fly) has no such limit and should keep the higher
+ * defaults; set these lower only where you've observed the same failure.
  */
-const DOWNLOAD_STREAMS = 6;
-const UPLOAD_STREAMS = 4;
+const DOWNLOAD_STREAMS = Number(import.meta.env.VITE_DOWNLOAD_STREAMS) || 6;
+const UPLOAD_STREAMS = Number(import.meta.env.VITE_UPLOAD_STREAMS) || 4;
 
 /**
  * Per-request payload sizes. Streams restart when drained, so these must be
