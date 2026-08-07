@@ -62,7 +62,7 @@ function App() {
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center gap-8 px-6 py-10">
         {/* The page had zero <h1> elements — a real SEO gap, since it's the
             strongest on-page signal for what a page is about. Visually
-            hidden rather than shown: the header's "NetPulse" wordmark already
+            hidden rather than shown: the header's "Speedtest4u" wordmark already
             carries the brand visually, and a second big heading fighting for
             attention above the gauge would be redundant chrome, not content
             people came to read. Search engines and screen readers still get

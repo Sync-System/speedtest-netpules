@@ -38,9 +38,9 @@ export function Footer() {
   return (
     <footer id="about" className="mt-8 w-full scroll-mt-20 border-t border-border bg-card">
       <div className="mx-auto w-full max-w-3xl px-6 py-6">
-        <FooterSection title="About NetPulse">
+        <FooterSection title="About Speedtest4u">
           <p>
-            NetPulse is a free, self-hosted internet speed test. It measures your
+            Speedtest4u is a free, self-hosted internet speed test. It measures your
             connection's download and upload throughput, ping, jitter, and how much
             latency your connection adds once it's saturated (bufferbloat) — run
             entirely in your browser against this site's own test server.
@@ -79,7 +79,7 @@ export function Footer() {
         </FooterSection>
       </div>
       <div className="border-t border-border px-6 py-4 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} NetPulse. Free to use, no account required.
+        © {new Date().getFullYear()} Speedtest4u. Free to use, no account required.
       </div>
     </footer>
   );

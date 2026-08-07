@@ -1,6 +1,8 @@
-# speedtest-netpules
+# Speedtest4u
 
-**NetPulse** — a free, self-hosted internet speed test. Measures download, upload, ping, jitter, and latency under load (bufferbloat), run entirely against this project's own server, no third-party test infrastructure required.
+**Speedtest4u** — a free, self-hosted internet speed test. Measures download, upload, ping, jitter, and latency under load (bufferbloat), run entirely against this project's own server, no third-party test infrastructure required.
+
+Live at [speedtest4u.com](https://speedtest4u.com).
 
 ## Structure
 

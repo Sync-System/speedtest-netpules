@@ -7,7 +7,7 @@ export function ClassicHeader() {
         <div className="flex items-center gap-2">
           <GaugeIcon size={22} className="text-primary" />
           <span className="font-heading text-lg font-extrabold tracking-tight">
-            Net<span className="text-primary">Pulse</span>
+            Speedtest<span className="text-primary">4u</span>
           </span>
         </div>
         {/* Previously three plain <span>s styled like nav links but wired to

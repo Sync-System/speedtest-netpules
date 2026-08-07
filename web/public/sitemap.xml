@@ -1,13 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  REPLACE the placeholder domain below with the real production domain
-  before submitting to Google Search Console — same reason as robots.txt.
-  Single-URL sitemap: this is a one-page app, so there's exactly one
-  location to list.
--->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://your-domain.example/</loc>
+    <loc>https://speedtest4u.com/</loc>
     <changefreq>monthly</changefreq>
     <priority>1.0</priority>
   </url>
