@@ -203,7 +203,7 @@ export function SpeedDial({
                 onClick={onGoClick}
                 className="mt-2 rounded-full border border-border px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground transition-colors hover:border-primary hover:text-primary"
               >
-                Test again
+                GO
               </button>
             )}
           </>
