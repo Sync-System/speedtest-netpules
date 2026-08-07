@@ -164,13 +164,22 @@ export function SpeedDial({
         className="absolute rounded-full bg-card shadow-lg flex flex-col items-center justify-center text-center"
         style={{ inset: "4.5rem" }}
       >
-        {showGo ? (
-          <button
-            onClick={onGoClick}
-            className="flex h-28 w-28 items-center justify-center rounded-full bg-primary font-heading text-2xl font-extrabold tracking-wide text-primary-foreground shadow-md transition-transform hover:scale-105 active:scale-95"
-          >
-            GO
-          </button>
+        {showGo && !settled ? (
+          <div className="relative flex h-28 w-28 items-center justify-center">
+            {/* Decorative only (aria-hidden): a soft ring that expands and
+                fades on a loop, drawing the eye to the one thing there is to
+                do on this screen without the button itself needing to move. */}
+            <span
+              aria-hidden="true"
+              className="go-pulse-ring pointer-events-none absolute inset-0 rounded-full bg-primary"
+            />
+            <button
+              onClick={onGoClick}
+              className="relative flex h-28 w-28 items-center justify-center rounded-full bg-primary font-heading text-2xl font-extrabold tracking-wide text-primary-foreground shadow-md transition-transform hover:scale-105 active:scale-95"
+            >
+              GO
+            </button>
+          </div>
         ) : (
           <>
             <span className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
@@ -185,6 +194,18 @@ export function SpeedDial({
               {animatedValue > MIN_MBPS ? animatedValue.toFixed(1) : "0.0"}
             </p>
             <span className="mt-1 text-sm text-muted-foreground">{centerUnit}</span>
+            {/* Finished state: the reading itself stays the hero figure inside
+                the instrument instead of a full-size GO button hiding it —
+                retrying is a lightweight follow-on action, not the primary
+                thing this screen is for anymore. */}
+            {showGo && settled && (
+              <button
+                onClick={onGoClick}
+                className="mt-2 rounded-full border border-border px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+              >
+                Test again
+              </button>
+            )}
           </>
         )}
       </div>
