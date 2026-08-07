@@ -39,30 +39,59 @@
   --font-mono: var(--font-mono);
 }
 
+/* Every colour is declared once as light-dark(light, dark), and which half
+   applies is decided entirely by `color-scheme`. That keeps one source of
+   truth per token — the alternative, repeating the whole palette inside a
+   prefers-color-scheme block and again under a [data-theme] selector, means
+   three places to forget when a colour changes.
+   It also removes the dark-mode flash without any blocking script: the OS
+   preference is resolved during the first style pass, before paint, which a
+   JS-applied class cannot be. That matters here because our CSP is
+   `script-src 'self'` and would reject the usual inline theme snippet.
+
+   The dark half is NOT the light half inverted. The brand blue lifts from
+   #0866c6 to #4d9bff and the orange from #ff6a39 to #ff8a5f because both fail
+   contrast on a dark surface at their light values — #0866c6 on the dark card
+   measures ~2.6:1, well under the 4.5:1 floor. Surfaces are a desaturated navy
+   rather than neutral grey so the blue reads as chosen rather than as the only
+   colour present. */
 :root {
-  --background: #f4f6f8;
-  --foreground: #1a2530;
-  --primary: #0866c6;
-  --primary-foreground: #ffffff;
-  --secondary: #eef1f4;
-  --secondary-foreground: #1a2530;
-  --tertiary: #ff6a39;
-  --tertiary-foreground: #ffffff;
-  --muted: #e7ebee;
-  --muted-foreground: #64748b;
-  --accent: #eef1f4;
-  --accent-foreground: #1a2530;
-  --card: #ffffff;
-  --card-foreground: #1a2530;
-  --destructive: #e0392f;
-  --destructive-foreground: #ffffff;
-  --border: #dde3e8;
-  --input: #dde3e8;
-  --ring: #0866c6;
+  color-scheme: light dark;
+
+  --background: light-dark(#f4f6f8, #0d1520);
+  --foreground: light-dark(#1a2530, #e8edf2);
+  --primary: light-dark(#0866c6, #4d9bff);
+  --primary-foreground: light-dark(#ffffff, #05101d);
+  --secondary: light-dark(#eef1f4, #1a2533);
+  --secondary-foreground: light-dark(#1a2530, #e8edf2);
+  --tertiary: light-dark(#ff6a39, #ff8a5f);
+  --tertiary-foreground: light-dark(#ffffff, #1c0c04);
+  --muted: light-dark(#e7ebee, #1e2a38);
+  --muted-foreground: light-dark(#64748b, #9aabbd);
+  --accent: light-dark(#eef1f4, #1a2533);
+  --accent-foreground: light-dark(#1a2530, #e8edf2);
+  --card: light-dark(#ffffff, #141d2a);
+  --card-foreground: light-dark(#1a2530, #e8edf2);
+  --destructive: light-dark(#e0392f, #ff6154);
+  --destructive-foreground: light-dark(#ffffff, #1c0705);
+  --border: light-dark(#dde3e8, #27333f);
+  --input: light-dark(#dde3e8, #27333f);
+  --ring: light-dark(#0866c6, #4d9bff);
+
   --radius: 0.75rem;
   --font-sans: "Inter", sans-serif;
   --font-heading: "Plus Jakarta Sans", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
+}
+
+/* An explicit choice pins color-scheme, which re-resolves every light-dark()
+   above in one stroke — and carries native form controls, scrollbars and focus
+   rings along with it, which a class-based approach would leave behind. */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 /* A slow, soft expanding ring behind the idle GO button — an invitation to
