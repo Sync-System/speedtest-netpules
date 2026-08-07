@@ -8,8 +8,11 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    // Points at the Cloudflare Worker (npm run dev -w worker) by default, since
+    // that's what production uses. Set API_PROXY=http://localhost:8787 to
+    // develop against the Express server in ../server instead.
     proxy: {
-      '/api': 'http://localhost:8787',
+      '/api': process.env.API_PROXY || 'http://localhost:8788',
     },
   },
   build: {

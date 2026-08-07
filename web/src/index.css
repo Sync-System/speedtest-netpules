@@ -65,6 +65,24 @@
   --font-mono: "JetBrains Mono", monospace;
 }
 
+/* A slow, soft expanding ring behind the idle GO button — an invitation to
+   click, not a flashy alarm. Tailwind's built-in animate-ping is punchier
+   and faster than fits a "press to begin" affordance, so this is its own,
+   gentler timing. */
+@keyframes go-invite {
+  0% {
+    transform: scale(1);
+    opacity: 0.45;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+.go-pulse-ring {
+  animation: go-invite 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 body {
   margin: 0;
   background-color: var(--background);

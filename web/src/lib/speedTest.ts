@@ -19,6 +19,10 @@ export interface ClientInfo {
   city: string;
   region: string;
   country: string;
+  /** Cloudflare PoP that served the test (e.g. "KHI"). Empty on other backends. */
+  colo?: string;
+  /** TCP round trip measured at the edge, not in the browser. Null if unknown. */
+  tcpRttMs?: number | null;
 }
 
 export interface LatencyResult {
@@ -55,14 +59,21 @@ const PING_SAMPLES = 10;
  * tests open several streams and sum them; this is the single biggest
  * accuracy factor for fast connections.
  *
- * Configurable per-deployment because that accuracy assumption only holds on
- * a host that can actually run several concurrent invocations: tested
- * directly against a Vercel Hobby backend, 4 concurrent upload streams ALL
- * timed out together, while the exact same request one at a time (including
- * back-to-back, up to 4 MiB) succeeded every time in a few milliseconds —
- * a hard concurrency ceiling, not a size or CORS problem. A persistent-server
- * host (Render/Railway/Fly) has no such limit and should keep the higher
- * defaults; set these lower only where you've observed the same failure.
+ * Two caveats worth knowing before tuning these.
+ *
+ * First, the host has to tolerate the concurrency. Against a Vercel Hobby
+ * backend, 4 concurrent upload streams ALL timed out together while the same
+ * request sent one at a time succeeded in milliseconds — a hard concurrency
+ * ceiling, not a size or CORS problem. The Cloudflare Worker in ../../worker
+ * handled 4 concurrent 16 MiB uploads without complaint, as does any
+ * persistent-server host. Lower these only where you've seen that failure.
+ *
+ * Second, and less obvious: over HTTP/2 these streams multiplex onto a SINGLE
+ * TCP connection, so they do NOT buy the independent congestion windows the
+ * paragraph above describes. Raising the count on an H2/H3 origin achieves
+ * very little. What actually helps is cutting RTT — the ceiling scales as
+ * 1/RTT — which is precisely why the measurement endpoints belong at an edge
+ * PoP near the user rather than in one distant datacentre.
  */
 const DOWNLOAD_STREAMS = Number(import.meta.env.VITE_DOWNLOAD_STREAMS) || 6;
 const UPLOAD_STREAMS = Number(import.meta.env.VITE_UPLOAD_STREAMS) || 4;
@@ -76,16 +87,17 @@ const UPLOAD_STREAMS = Number(import.meta.env.VITE_UPLOAD_STREAMS) || 4;
  */
 const DOWNLOAD_CHUNK_BYTES = 200 * 1024 * 1024; // the server's hard cap
 /**
- * Kept well under 4.5 MiB, not chosen for TCP-warmup reasons like the
- * download chunk above. Serverless hosts (Vercel, and most others) cap
- * incoming request body size — commonly ~4.5 MiB — and reject anything
- * larger before it reaches our Express handler at all. A too-large chunk
- * here doesn't measure a slow upload; every attempt fails identically, so
- * the reported speed is a flat, suspiciously steady 0 regardless of the
- * real connection. Response *streaming* (the download side) isn't subject
- * to the same limit, which is why only this constant needs to respect it.
+ * Sized so a fast link doesn't drain a chunk in milliseconds and spend the
+ * phase reconnecting instead of transferring.
+ *
+ * This was pinned at 4 MiB for a while to fit under Vercel's ~4.5 MiB request
+ * body cap — anything larger was rejected before reaching the handler, so every
+ * attempt failed identically and upload reported a flat, suspiciously steady
+ * 0.00 Mbps. The Cloudflare Worker backend accepts 100 MiB, and 4 concurrent
+ * 16 MiB uploads were verified to complete together in ~1.2s, so the cap is
+ * gone. Keep this under 100 MiB if you point the client at a Cloudflare origin.
  */
-const UPLOAD_CHUNK_BYTES = 4 * 1024 * 1024;
+const UPLOAD_CHUNK_BYTES = 16 * 1024 * 1024;
 
 /**
  * TCP starts slow (slow-start) and ramps toward the path's capacity. Bytes
@@ -111,7 +123,13 @@ const STATS_BUCKET_MS = 1_000;
 
 function bytesToMbps(bytes: number, ms: number): number {
   if (ms <= 0) return 0;
-  return (bytes * 8) / (ms / 1000) / 1_000_000;
+  // Clamped at zero because `bytes` can legitimately arrive negative: a stream
+  // rejected mid-flight un-counts the bytes the socket had already accepted
+  // (see the upload handler below), and if that correction lands after the
+  // measurement window opened, the delta for the window goes below zero. The
+  // arithmetic is right; a negative throughput is still never a real reading,
+  // and the UI was rendering things like "-3.62 Mbps · -12.17–0.09".
+  return Math.max(0, (bytes * 8) / (ms / 1000) / 1_000_000);
 }
 
 /**
@@ -171,6 +189,10 @@ export async function fetchClientInfo(signal?: AbortSignal): Promise<ClientInfo>
     city: data.city ?? "",
     region: data.region ?? "",
     country: data.country ?? "",
+    // Only the Cloudflare Worker backend supplies these; the Express server
+    // omits them and the UI simply doesn't render what isn't there.
+    colo: data.colo ?? "",
+    tcpRttMs: typeof data.tcpRttMs === "number" ? data.tcpRttMs : null,
   };
 }
 

@@ -1,0 +1,19 @@
+name = "speedtest4u-api"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+
+# Deploy with:  npm run deploy -w worker      (wrangler will prompt to log in)
+# Test locally: npm run dev -w worker         (serves on http://localhost:8788)
+#
+# To serve the API from the same origin as the site — which removes CORS
+# entirely and lets the browser read Server-Timing without extra headers —
+# uncomment the route below once speedtest4u.com is on Cloudflare with the
+# orange (proxied) cloud enabled. The Worker then intercepts /api/* before the
+# request ever reaches whatever hosts the static site.
+#
+# [[routes]]
+# pattern = "speedtest4u.com/api/*"
+# zone_name = "speedtest4u.com"
+
+[observability]
+enabled = true

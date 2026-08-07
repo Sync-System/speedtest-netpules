@@ -5,7 +5,8 @@
   "type": "module",
   "workspaces": [
     "server",
-    "web"
+    "web",
+    "worker"
   ],
   "scripts": {
     "dev": "concurrently -k -n server,web -c blue,cyan \"cross-env PORT=8787 npm run dev -w server\" \"cross-env PORT=5173 npm run dev -w web\"",
@@ -16,5 +17,9 @@
   "devDependencies": {
     "concurrently": "^9.1.0",
     "cross-env": "^10.1.0"
+  },
+  "allowScripts": {
+    "workerd@1.20260801.1": true,
+    "esbuild@0.28.1": true
   }
 }
