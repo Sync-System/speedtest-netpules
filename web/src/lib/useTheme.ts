@@ -1,78 +1,69 @@
 import { useCallback, useEffect, useState } from "react";
 
 /**
- * Three states, not two. "system" is a real choice and the default — it means
- * "follow the OS", so someone whose phone flips to dark at sunset gets that
- * without ever visiting the site again. Collapsing this to a light/dark boolean
- * would force us to guess an initial value and then permanently ignore the OS.
+ * Dark is the product's default, not an inherited OS preference — so this is
+ * two states rather than three. An earlier version tracked a "system" choice
+ * via prefers-color-scheme; that's the right call for a site with no opinion,
+ * but it directly contradicts having a default of our own, and carrying both
+ * meant "default" silently meant different things on different machines.
  *
- * Only an explicit override is stored or written to the DOM. With no override
- * there is no `data-theme` attribute at all, and the CSS `light-dark()` tokens
- * resolve from `prefers-color-scheme` on their own — before first paint, with
- * no flash and no blocking script.
+ * The default is expressed in CSS (`color-scheme: dark` on :root), not here.
+ * This hook therefore only ever writes an attribute to OVERRIDE that, which is
+ * what keeps the common case free of both JavaScript and a flash: a first-time
+ * visitor paints dark before this module has even run.
  */
-export type ThemeChoice = "system" | "light" | "dark";
+export type Theme = "dark" | "light";
 
+const DEFAULT_THEME: Theme = "dark";
 const STORAGE_KEY = "speedtest4u.theme";
 
-function readStored(): ThemeChoice {
+function readStored(): Theme {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw === "light" || raw === "dark" ? raw : "system";
+    return raw === "light" || raw === "dark" ? raw : DEFAULT_THEME;
   } catch {
     // Private browsing and blocked-storage modes throw on access rather than
-    // returning null; falling back to "system" is correct and needs no storage.
-    return "system";
+    // returning null, so this needs catching, not a null check.
+    return DEFAULT_THEME;
   }
 }
 
-function apply(choice: ThemeChoice) {
+/**
+ * Applied outside React so the override lands during module evaluation, before
+ * the first render — rather than in an effect, which runs after the browser has
+ * already had a chance to paint the default.
+ */
+export function applyStoredTheme() {
+  const theme = readStored();
   const root = document.documentElement;
-  if (choice === "system") {
+  if (theme === DEFAULT_THEME) {
+    // No attribute at all in the default case: the CSS default already covers
+    // it, and writing one would only invite the two to drift apart.
     root.removeAttribute("data-theme");
   } else {
-    root.setAttribute("data-theme", choice);
+    root.setAttribute("data-theme", theme);
   }
 }
 
 export function useTheme() {
-  const [choice, setChoice] = useState<ThemeChoice>(readStored);
-  // What's actually on screen right now — the resolved answer, not the choice.
-  // Needed so the toggle can show the icon for the theme in effect when the
-  // user is on "system".
-  const [resolved, setResolved] = useState<"light" | "dark">(() =>
-    typeof matchMedia === "function" && matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light",
-  );
+  const [theme, setTheme] = useState<Theme>(readStored);
 
   useEffect(() => {
-    apply(choice);
+    const root = document.documentElement;
+    if (theme === DEFAULT_THEME) root.removeAttribute("data-theme");
+    else root.setAttribute("data-theme", theme);
+
     try {
-      if (choice === "system") localStorage.removeItem(STORAGE_KEY);
-      else localStorage.setItem(STORAGE_KEY, choice);
+      if (theme === DEFAULT_THEME) localStorage.removeItem(STORAGE_KEY);
+      else localStorage.setItem(STORAGE_KEY, theme);
     } catch {
-      /* storage unavailable; the choice still applies for this session */
+      /* storage unavailable; the choice still holds for this session */
     }
-  }, [choice]);
+  }, [theme]);
 
-  // Track the OS preference for as long as we're deferring to it, so a system
-  // theme change mid-session is reflected without a reload.
-  useEffect(() => {
-    if (typeof matchMedia !== "function") return;
-    const mq = matchMedia("(prefers-color-scheme: dark)");
-    const sync = () => setResolved(mq.matches ? "dark" : "light");
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
+  const toggle = useCallback(() => {
+    setTheme((current) => (current === "dark" ? "light" : "dark"));
   }, []);
 
-  const active: "light" | "dark" = choice === "system" ? resolved : choice;
-
-  /** Flip to the opposite of what's currently on screen. */
-  const toggle = useCallback(() => {
-    setChoice(active === "dark" ? "light" : "dark");
-  }, [active]);
-
-  return { choice, active, toggle };
+  return { theme, toggle };
 }

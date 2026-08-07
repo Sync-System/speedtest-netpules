@@ -2,8 +2,8 @@ import { Gauge as GaugeIcon, Moon, Sun } from "lucide-react";
 import { useTheme } from "../lib/useTheme";
 
 function ThemeToggle() {
-  const { active, toggle } = useTheme();
-  const next = active === "dark" ? "light" : "dark";
+  const { theme, toggle } = useTheme();
+  const next = theme === "dark" ? "light" : "dark";
 
   return (
     <button
@@ -16,7 +16,7 @@ function ThemeToggle() {
       title={`Switch to ${next} mode`}
       className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
     >
-      {active === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+      {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
     </button>
   );
 }

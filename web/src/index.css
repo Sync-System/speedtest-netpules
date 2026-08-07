@@ -44,10 +44,13 @@
    truth per token — the alternative, repeating the whole palette inside a
    prefers-color-scheme block and again under a [data-theme] selector, means
    three places to forget when a colour changes.
-   It also removes the dark-mode flash without any blocking script: the OS
-   preference is resolved during the first style pass, before paint, which a
-   JS-applied class cannot be. That matters here because our CSP is
-   `script-src 'self'` and would reject the usual inline theme snippet.
+
+   `color-scheme: dark` here, not `light dark`: dark is the brand default
+   rather than a preference we inherit, so it applies to everyone who hasn't
+   chosen otherwise. Because it's decided in CSS, the first paint is already
+   correct with no JavaScript involved and no flash — which a class applied by
+   a script cannot achieve, and which we can't fix with an inline snippet
+   anyway under a `script-src 'self'` CSP.
 
    The dark half is NOT the light half inverted. The brand blue lifts from
    #0866c6 to #4d9bff and the orange from #ff6a39 to #ff8a5f because both fail
@@ -56,7 +59,7 @@
    rather than neutral grey so the blue reads as chosen rather than as the only
    colour present. */
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
 
   --background: light-dark(#f4f6f8, #0d1520);
   --foreground: light-dark(#1a2530, #e8edf2);
@@ -86,7 +89,9 @@
 
 /* An explicit choice pins color-scheme, which re-resolves every light-dark()
    above in one stroke — and carries native form controls, scrollbars and focus
-   rings along with it, which a class-based approach would leave behind. */
+   rings along with it, which a class-based approach would leave behind.
+   Only "light" does any real work now that dark is the default; the dark rule
+   is kept so a stored "dark" is still valid if the default ever changes. */
 :root[data-theme="light"] {
   color-scheme: light;
 }
