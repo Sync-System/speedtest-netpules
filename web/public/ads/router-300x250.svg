@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 250" width="300" height="250" role="img" aria-label="Slow Wi-Fi? Your router may be the bottleneck. Compare mesh systems.">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a2544"/>
+      <stop offset="1" stop-color="#14406e"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="300" height="250" rx="12" fill="url(#bg)"/>
+
+  <!-- Wi-Fi arcs. The outermost is dimmed to read as "signal not reaching",
+       which is the whole argument the ad is making, made visually before a
+       single word is read. -->
+  <g fill="none" stroke="#ff8a5f" stroke-width="5" stroke-linecap="round">
+    <path d="M 126 78 A 34 34 0 0 1 174 78" opacity="0.25"/>
+    <path d="M 135 88 A 21 21 0 0 1 165 88" opacity="0.6"/>
+    <path d="M 144 98 A 8 8 0 0 1 156 98"/>
+  </g>
+  <circle cx="150" cy="107" r="4" fill="#ff8a5f"/>
+
+  <text x="150" y="148" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+        font-size="27" font-weight="800" fill="#ffffff" letter-spacing="-0.5">Slow Wi-Fi?</text>
+
+  <text x="150" y="174" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+        font-size="13.5" fill="#a9c2dd">Your router may be the bottleneck,</text>
+  <text x="150" y="191" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+        font-size="13.5" fill="#a9c2dd">not your plan.</text>
+
+  <!-- Pill sized to the copy, not the other way round. SVG text does not wrap
+       or shrink to fit, so a button that's a few px too narrow doesn't clip —
+       the label spills out over the background and the ad looks broken. -->
+  <rect x="57" y="206" width="186" height="32" rx="16" fill="#ff8a5f"/>
+  <text x="150" y="227" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+        font-size="13.5" font-weight="700" fill="#1c0c04">Compare mesh systems</text>
+</svg>

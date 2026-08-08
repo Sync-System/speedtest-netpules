@@ -1,99 +1,133 @@
 /**
- * A single ad position.
+ * A single ad position, rendering real image creative.
  *
- * Three rules are baked in here rather than left to each call site, because
+ * Four rules are baked in here rather than left to each call site, because
  * getting any of them wrong costs more than the slot earns:
  *
- * 1. The height is RESERVED before anything loads. An ad that appears and
- *    shoves the page down is a Cumulative Layout Shift hit, and CLS feeds
- *    Google's page-experience signal — so a sloppy slot can quietly cost you
- *    ranking on the very searches that bring people here.
- * 2. Every slot is labelled "Advertisement". Google requires ads to be
+ * 1. Intrinsic width/height on every image, so the box is reserved before the
+ *    file loads. An ad that pops in and shoves the page down is a Cumulative
+ *    Layout Shift hit, and CLS feeds Google's page-experience signal — a sloppy
+ *    slot quietly costs ranking on the searches that bring people here.
+ * 2. Every slot is labelled "Advertisement". Policy requires ads be
  *    distinguishable from content, and on a measurement tool the cost of
- *    looking like we're dressing an ad up as a result is the whole site's
- *    credibility.
+ *    looking like we dressed an ad up as a result is the site's credibility.
  * 3. Nothing animates. The gauge is the only thing on this page allowed to
- *    move; an ad competing with it for attention during a test is exactly the
- *    failure mode to avoid.
+ *    move; an ad competing with it during a test is the failure mode to avoid.
+ * 4. Creative is chosen from the visitor's own result — see pickCreative.
+ *
+ * The files are SVG on purpose: a few KB each, sharp on any display, no
+ * external request (so `img-src 'self'` holds), and editable as text rather
+ * than needing a design tool to change a price or a headline.
  */
 
-interface HouseAd {
-  title: string;
-  body: string;
-  cta: string;
+interface Creative {
+  src: string;
+  /** Narrow-screen variant. Falls back to `src` when absent. */
+  srcMobile?: string;
+  width: number;
+  height: number;
+  mobileWidth?: number;
+  mobileHeight?: number;
+  /** Describes the OFFER — a screen reader user is deciding whether to care. */
+  alt: string;
   href: string;
 }
 
-/**
- * Self-served ads. Replace these with real creative, or swap the body of
- * <AdSlot> for an AdSense unit once approved — the reserved sizes below are
- * standard IAB formats (728x90 and 300x250) precisely so that swap is a
- * drop-in and the layout doesn't move when it happens.
- *
- * Empty array renders nothing at all rather than an empty grey box: shipping
- * visible dead space to users costs goodwill and earns zero.
- */
-const HOUSE_ADS: Record<string, HouseAd[]> = {
-  results: [
-    {
-      title: "Bookmark Speedtest4u",
-      body: "Free, instant, no signup. Test download, upload, ping, jitter and packet loss any time.",
-      cta: "Add to bookmarks",
-      href: "#top",
-    },
-  ],
-  footer: [
-    {
-      title: "Slow result? Check these first",
-      body: "Wi-Fi distance, router age and peak-hour congestion explain most slow tests before your plan does.",
-      cta: "Read the guide",
-      href: "#about",
-    },
-  ],
+const ROUTER: Creative = {
+  src: "/ads/router-300x250.svg",
+  width: 300,
+  height: 250,
+  alt: "Slow Wi-Fi? Your router may be the bottleneck, not your plan. Compare mesh systems.",
+  href: "#about",
 };
+
+const PLAN: Creative = {
+  src: "/ads/plan-300x250.svg",
+  width: 300,
+  height: 250,
+  alt: "Paying for speed you never see? Check what else is available to you. Compare plans.",
+  href: "#about",
+};
+
+const GUIDE: Creative = {
+  src: "/ads/guide-728x90.svg",
+  srcMobile: "/ads/guide-320x100.svg",
+  width: 728,
+  height: 90,
+  mobileWidth: 320,
+  mobileHeight: 100,
+  alt: "Slow result? Wi-Fi distance, router age and peak-hour congestion explain most slow tests. Read the guide.",
+  href: "#about",
+};
+
+/**
+ * Serve the creative that fits what we just measured.
+ *
+ * This is the whole revenue argument for putting ads on a speed test rather
+ * than a blog: nowhere else does a visitor hand you a fresh, specific number
+ * about a problem they're currently annoyed by. Someone who has just watched
+ * 6 Mbps land on the gauge is in-market for a better plan in a way no
+ * demographic guess could identify — so they get the plan comparison, and the
+ * happy visitor gets a coverage offer instead of an irrelevant "fix your slow
+ * internet" pitch they'll ignore.
+ *
+ * Worth being precise about what this is NOT: it reads a number already on
+ * screen, in memory, for this render only. No profile, no cookie, no third
+ * party, nothing stored or sent — so it stays true to the privacy policy and
+ * needs no consent banner. Relevance without tracking.
+ */
+const SLOW_MBPS = 25;
+
+function pickCreative(downloadMbps: number | null): Creative {
+  if (downloadMbps == null) return ROUTER; // no result yet — neutral, fits either way
+  return downloadMbps < SLOW_MBPS ? PLAN : ROUTER;
+}
 
 type AdFormat = "leaderboard" | "rectangle";
 
-/** Reserved boxes match IAB standards so an AdSense unit drops straight in. */
-const RESERVED: Record<AdFormat, string> = {
-  // 320x100 on phones, 728x90 from sm up.
-  leaderboard: "min-h-[100px] sm:min-h-[90px]",
-  // 300x250 — the best-performing display size, and short enough that it
-  // doesn't push the history section off a phone screen.
-  rectangle: "min-h-[250px]",
-};
-
 interface AdSlotProps {
-  /** Which HOUSE_ADS bucket to draw from. */
-  id: keyof typeof HOUSE_ADS;
   format: AdFormat;
+  /** Measured download, when there is one, for creative selection. */
+  downloadMbps?: number | null;
   className?: string;
 }
 
-export function AdSlot({ id, format, className = "" }: AdSlotProps) {
-  const pool = HOUSE_ADS[id] ?? [];
-  if (pool.length === 0) return null;
-  // Chosen per render rather than per session: with one creative it's a no-op,
-  // and with several it spreads impressions without needing any state.
-  const ad = pool[Math.floor(Math.random() * pool.length)];
+export function AdSlot({ format, downloadMbps = null, className = "" }: AdSlotProps) {
+  const creative = format === "leaderboard" ? GUIDE : pickCreative(downloadMbps);
+  const hasMobile = Boolean(creative.srcMobile);
 
   return (
     <aside
-      // "complementary", not a bare div: it tells a screen reader this is set
+      // "complementary", not a bare div: it tells a screen reader this sits
       // apart from the page's actual purpose, so it can be skipped.
       aria-label="Advertisement"
-      className={`flex w-full max-w-3xl flex-col items-center ${className}`}
+      className={`flex w-full flex-col items-center ${className}`}
     >
       <span className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
         Advertisement
       </span>
-      <a
-        href={ad.href}
-        className={`flex w-full flex-col items-center justify-center rounded-xl border border-border bg-card px-5 py-4 text-center transition-colors hover:border-primary ${RESERVED[format]}`}
-      >
-        <p className="font-heading text-base font-bold text-foreground">{ad.title}</p>
-        <p className="mt-1 max-w-md text-sm leading-snug text-muted-foreground">{ad.body}</p>
-        <span className="mt-2.5 text-sm font-semibold text-primary">{ad.cta} →</span>
+      <a href={creative.href} className="block max-w-full rounded-xl transition-opacity hover:opacity-90">
+        <picture>
+          {hasMobile && (
+            <source
+              media="(min-width: 640px)"
+              srcSet={creative.src}
+              width={creative.width}
+              height={creative.height}
+            />
+          )}
+          <img
+            src={hasMobile ? creative.srcMobile : creative.src}
+            width={hasMobile ? creative.mobileWidth : creative.width}
+            height={hasMobile ? creative.mobileHeight : creative.height}
+            alt={creative.alt}
+            // Below the gauge in every case, so it is never what the visitor is
+            // waiting on — but eager rather than lazy, because a slot that
+            // resolves late is a slot that shifts late.
+            decoding="async"
+            className="h-auto max-w-full rounded-xl"
+          />
+        </picture>
       </a>
     </aside>
   );

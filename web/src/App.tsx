@@ -149,7 +149,7 @@ function App() {
             own landing-page review penalises, so it would cost traffic to buy
             impressions. Always mounted, so nothing shifts when a run starts. */}
         <Reveal delay={200}>
-          <AdSlot id="results" format="rectangle" />
+          <AdSlot format="rectangle" downloadMbps={downloadFinal?.mbps ?? null} />
         </Reveal>
 
         <Reveal delay={300}>
@@ -162,7 +162,7 @@ function App() {
             this earns little anyway. Reached only by someone already scrolling
             past their result, so it interrupts nothing. */}
         <Reveal delay={350}>
-          <AdSlot id="footer" format="leaderboard" />
+          <AdSlot format="leaderboard" />
         </Reveal>
       </main>
 
