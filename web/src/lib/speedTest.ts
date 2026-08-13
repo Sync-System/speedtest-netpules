@@ -441,11 +441,30 @@ async function runTransfer(
         // during genuine saturation rather than in the tail as streams wind down.
         if (probeLoadedLatency) {
           void (async () => {
+            let consecutiveFailures = 0;
             while (!controller.signal.aborted && loadedPings.length < LOADED_PING_SAMPLES) {
               try {
                 loadedPings.push(await pingOnce(controller.signal));
+                consecutiveFailures = 0;
               } catch {
-                return;
+                // NOT a return. A single dropped or timed-out ping here doesn't
+                // mean the network is unreachable — it's the single most likely
+                // moment for exactly that to happen, since this fires while the
+                // link is deliberately saturated. Verified live: two real runs
+                // on the same real (289ms baseline, ~11 Mbps) connection, one
+                // came back empty on the very first attempt and reported
+                // "Under load: —", the other succeeded and reported 6080ms.
+                // Both were measuring the same kind of connection; only one
+                // survived a single hiccup. Bufferbloat is the metric that
+                // matters most on exactly the connections most likely to drop
+                // a probe, so abandoning outright on attempt one silently
+                // erases the metric precisely when it would be most telling.
+                // Bounded the same way the stream retries above are: the
+                // controller's own abort — tied to the phase's fixed window —
+                // is the only thing that can end this loop early.
+                consecutiveFailures++;
+                const delay = Math.min(1500, 100 * 2 ** (consecutiveFailures - 1));
+                await sleep(delay, controller.signal);
               }
             }
           })();
