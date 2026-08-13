@@ -52,6 +52,79 @@ export function Footer() {
           </p>
         </FooterSection>
 
+        {/* Real, load-bearing content, not filler: this is close to the only
+            indexable body text on a page that's otherwise a single interactive
+            tool. It also answers exactly what a confused "Under load: 40ms" or
+            "unstable 2-9 Mbps" reading raises for a non-technical visitor —
+            useful in its own right regardless of any search-traffic benefit.
+            Mirrored word-for-word in the FAQPage JSON-LD in index.html:
+            Google requires visible content to match structured data, and
+            a mismatch risks a manual action against the rich-result
+            eligibility rather than just losing it quietly. */}
+        <FooterSection title="Frequently Asked Questions" defaultOpen>
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-semibold text-foreground">What is a good download speed?</h3>
+              <p className="mt-1">
+                Roughly: 25 Mbps covers one HD stream comfortably, 100+ Mbps handles
+                several 4K streams or a busy household, and gigabit (900+ Mbps) mainly
+                matters for large file transfers rather than everyday browsing or
+                video calls.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">Why does upload speed matter?</h3>
+              <p className="mt-1">
+                Upload is what limits video calls, cloud backups, and livestreaming —
+                it's typically far lower than download on most home connections, which
+                is normal and expected, not a fault.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">What is ping (latency)?</h3>
+              <p className="mt-1">
+                How long a signal takes to reach our server and back, in milliseconds.
+                Lower is better — it's the number that determines whether a game or
+                video call feels instant or laggy, independent of your Mbps.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">What is jitter?</h3>
+              <p className="mt-1">
+                How much your ping varies from one moment to the next. A connection
+                with low ping but high jitter can still cause choppy calls, because
+                packets arrive unevenly even though the average delay looks fine.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">What does "Under load" (bufferbloat) mean?</h3>
+              <p className="mt-1">
+                Your ping measured while the connection is busy downloading or
+                uploading, instead of idle. A big jump — say 20ms idle to 400ms
+                loaded — means your router is queuing data instead of sending it, and
+                is why calls can lag specifically while something else is
+                downloading in the background.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">Why do my results change each time I test?</h3>
+              <p className="mt-1">
+                Server load, Wi-Fi interference, other devices on your network, and
+                your ISP's own peak-hour congestion all shift the number run to run —
+                true of every speed test, not just this one. Treat one result as a
+                data point, and the History section below as the more honest picture.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">Is Speedtest4u free? Do I need an account?</h3>
+              <p className="mt-1">
+                Yes, and no. No sign-up, no app install, no payment — open the page
+                and press GO.
+              </p>
+            </div>
+          </div>
+        </FooterSection>
+
         <FooterSection title="Privacy Policy">
           <p>
             <strong className="text-foreground">What we collect:</strong> when you
