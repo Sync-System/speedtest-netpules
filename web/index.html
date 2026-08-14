@@ -3,10 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- PNG fallback: some crawlers and older browsers that fetch a site's
+         favicon (including Google's SERP favicon slot, historically
+         inconsistent about SVG) skip an SVG-only <link rel="icon">. -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0866c6" />
 
-    <title>Speedtest4u — Free Internet Speed Test (Download, Upload, Ping)</title>
+    <!-- Trimmed from a 63-char version that also duplicated the metrics list
+         already in the meta description: Google truncates titles around
+         ~60 characters, and og:title/twitter:title below were already this
+         shorter form — the <title> tag had drifted out of sync with them. -->
+    <title>Speedtest4u — Free Internet Speed Test, No Sign-Up</title>
     <meta
       name="description"
       content="Test your real internet speed for free: download, upload, ping, jitter, and bufferbloat under load — measured live in your browser, no sign-up required."
@@ -21,6 +31,8 @@
       content="Test your real internet speed for free: download, upload, ping, jitter, and bufferbloat under load — measured live in your browser."
     />
     <meta property="og:url" content="https://speedtest4u.com/" />
+    <meta property="og:site_name" content="Speedtest4u" />
+    <meta property="og:locale" content="en_US" />
     <!-- Absolute URL required: crawlers for Facebook/Slack/WhatsApp/etc fetch
          this server-side, with no page context to resolve a relative path
          against. 1200x630 is the size every major platform (Facebook,

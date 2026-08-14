@@ -11,17 +11,25 @@ function FooterSection({ title, children, defaultOpen = false }: FooterSectionPr
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="border-b border-border py-4 last:border-0">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="flex min-h-11 w-full items-center justify-between gap-3 text-left"
-      >
-        <span className="font-heading text-base font-semibold">{title}</span>
-        <ChevronDown
-          size={18}
-          className={`shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </button>
+      {/* A real heading, not a styled span: without it the page's only other
+          heading is the sr-only H1, so the 7 FAQ questions below (H3) had no
+          H2 parent — a skipped level that breaks screen-reader heading
+          navigation and blurs the section structure for crawlers. Wrapping
+          the whole button in the H2 keeps one click target and one tab stop,
+          rather than a separate heading element sitting beside the button. */}
+      <h2 className="text-base font-semibold">
+        <button
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className="flex min-h-11 w-full items-center justify-between gap-3 text-left font-heading"
+        >
+          {title}
+          <ChevronDown
+            size={18}
+            className={`shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+          />
+        </button>
+      </h2>
       {/* Content stays in the DOM regardless of `open` — collapsed via CSS,
           not omitted from render. A search crawler (and the Google Ads
           landing-page reviewer) reads the actual markup, not post-click
