@@ -5,6 +5,9 @@ interface ResultsRowProps {
   pingMs: number | null;
   jitterMs: number | null;
   loadedPingMs: number | null;
+  /** True once the download-phase probe has run and returned zero samples —
+   * distinct from loadedPingMs simply not being measured yet. */
+  loadedPingFailed: boolean;
   /** Ratio 0–1, or null while probing / when the probe couldn't run. */
   packetLoss: number | null;
   downloadFinal: RateSummary | null;
@@ -116,6 +119,7 @@ export function ResultsRow({
   pingMs,
   jitterMs,
   loadedPingMs,
+  loadedPingFailed,
   packetLoss,
   downloadFinal,
   uploadFinal,
@@ -127,8 +131,16 @@ export function ResultsRow({
   // A negative delta doesn't mean the link got faster under load — it means
   // the idle baseline was noisy. Saying "+0ms" would imply we measured a real
   // zero, so report it as no detected increase instead.
-  const loadDetail =
-    bloatMs == null ? "ms" : bloatMs > 1 ? `ms · +${bloatMs.toFixed(0)}ms loaded` : "ms · no added delay";
+  // loadedPingFailed means the probe ran but never got a single reply back
+  // while the link was saturated — worth naming explicitly rather than
+  // folding into the plain "ms" case, which reads as "not measured yet".
+  const loadDetail = loadedPingFailed
+    ? "no response while saturated"
+    : bloatMs == null
+      ? "ms"
+      : bloatMs > 1
+        ? `ms · +${bloatMs.toFixed(0)}ms loaded`
+        : "ms · no added delay";
 
   return (
     // Order groups the metrics by what they measure, so same-unit figures sit
@@ -167,7 +179,7 @@ export function ResultsRow({
       <Metric
         icon={<Waves size={15} />}
         label="Under load"
-        value={loadedPingMs != null ? loadedPingMs.toFixed(0) : "—"}
+        value={loadedPingMs != null ? loadedPingMs.toFixed(0) : loadedPingFailed ? "Severe" : "—"}
         detail={loadDetail}
       />
       {/* Only mounted once there's a real answer. Loss resolves a few seconds

@@ -37,6 +37,12 @@ export function useSpeedTest() {
   const [pingMs, setPingMs] = useState<number | null>(null);
   const [jitterMs, setJitterMs] = useState<number | null>(null);
   const [loadedPingMs, setLoadedPingMs] = useState<number | null>(null);
+  // Distinguishes "hasn't reached the download phase yet" (loadedPingMs null,
+  // this false) from "the probe ran while the link was saturated and every
+  // sample failed" (loadedPingMs null, this true) — the latter is the worst
+  // possible bufferbloat reading, not a missing one. See runTransfer's
+  // loadedPings comment in speedTest.ts for why the probe can come back empty.
+  const [loadedPingFailed, setLoadedPingFailed] = useState(false);
   const [packetLoss, setPacketLoss] = useState<PacketLossResult>(null);
 
   const [downloadMbps, setDownloadMbps] = useState(0);
@@ -60,6 +66,7 @@ export function useSpeedTest() {
     setPingMs(null);
     setJitterMs(null);
     setLoadedPingMs(null);
+    setLoadedPingFailed(false);
     setPacketLoss(null);
     setDownloadMbps(0);
     setDownloadFinal(null);
@@ -99,6 +106,8 @@ export function useSpeedTest() {
         const sorted = [...dl.loadedPings].sort((a, b) => a - b);
         loaded = sorted[Math.floor(sorted.length / 2)];
         setLoadedPingMs(loaded);
+      } else {
+        setLoadedPingFailed(true);
       }
 
       setPhase("upload");
@@ -143,6 +152,7 @@ export function useSpeedTest() {
     pingMs,
     jitterMs,
     loadedPingMs,
+    loadedPingFailed,
     packetLoss,
     downloadMbps,
     downloadFinal,

@@ -1,0 +1,31 @@
+# Netlify has no equivalent of server/app.js's helmet() — without this file the
+# SPA ships with zero CSP/security headers (verified: only Strict-Transport-Security
+# comes from Netlify itself). Directive values are copied from app.js's helmet
+# config so both hosting paths enforce the same policy against the same build
+# output; keep the two in sync by hand if one changes.
+#
+# connect-src differs from app.js on purpose: this frontend is cross-origin to
+# its API (Netlify + Vercel/Worker), while app.js's own CSP only ever has to
+# admit itself. Origins listed:
+#   - speedtest-netpules-server.vercel.app: the Express backend VITE_API_BASE_URL
+#     currently points at (confirmed live, Aug 2026).
+#   - *.workers.dev: the Cloudflare Worker backend is written and committed but
+#     not yet deployed/wired — wildcarded because the account subdomain isn't
+#     known until `wrangler deploy` runs. Narrow this to the exact host (or a
+#     custom-domain route) once the cutover happens, and drop the vercel.app
+#     entry once nothing points at it any more.
+#   - api.ipify.org: fetched directly by the browser (web/src/lib/speedTest.ts,
+#     fetchIPv4) for an IPv4 address on a dual-stack connection, not proxied
+#     through either backend.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  X-XSS-Protection: 0
+  X-DNS-Prefetch-Control: off
+  X-Download-Options: noopen
+  X-Permitted-Cross-Domain-Policies: none
+  Referrer-Policy: no-referrer
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+  Origin-Agent-Cluster: ?1
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'self'; img-src 'self' data:; object-src 'none'; script-src 'self'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; upgrade-insecure-requests; connect-src 'self' https://speedtest-netpules-server.vercel.app https://*.workers.dev https://api.ipify.org
