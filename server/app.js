@@ -251,8 +251,12 @@ app.post("/api/upload", testLimiter, (req, res) => {
     if (firstByteNs === null) firstByteNs = process.hrtime.bigint();
     received += chunk.length;
     if (received > MAX_UPLOAD_BYTES) {
-      // Tear down the connection rather than keep draining a body far past
-      // anything the frontend itself would ever send.
+      // destroy(), not a graceful res.end(): the goal is to stop reading a
+      // body far past anything the frontend itself would ever send, and
+      // draining the rest first just to deliver a clean 413 would mean
+      // trusting the same oversized-sender to ever stop. Verified locally
+      // that a fast sender sees a reset connection rather than a parsed 413 —
+      // acceptable here since no real frontend request can ever hit this path.
       req.destroy();
       if (!res.headersSent) res.status(413).end();
     }
