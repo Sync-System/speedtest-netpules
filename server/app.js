@@ -76,6 +76,12 @@ const testLimiter = rateLimit({
 // arbitrary amounts without re-generating randomness on every request.
 const CHUNK = crypto.randomBytes(1024 * 1024); // 1 MiB
 
+// The frontend never sends more than UPLOAD_CHUNK_BYTES (16 MiB, speedTest.ts)
+// in a single request; double that for headroom and reject anything past it
+// outright rather than draining an arbitrarily large body from a caller going
+// around the frontend entirely.
+const MAX_UPLOAD_BYTES = 32 * 1024 * 1024;
+
 app.get("/api/ping", (_req, res) => {
   res.set("Cache-Control", "no-store");
   res.status(204).end();
@@ -244,9 +250,16 @@ app.post("/api/upload", testLimiter, (req, res) => {
   req.on("data", (chunk) => {
     if (firstByteNs === null) firstByteNs = process.hrtime.bigint();
     received += chunk.length;
+    if (received > MAX_UPLOAD_BYTES) {
+      // Tear down the connection rather than keep draining a body far past
+      // anything the frontend itself would ever send.
+      req.destroy();
+      if (!res.headersSent) res.status(413).end();
+    }
   });
 
   req.on("end", () => {
+    if (res.headersSent) return; // already answered 413 above
     const endNs = process.hrtime.bigint();
     const totalMs = Number(endNs - startNs) / 1e6;
     // Time from first byte on the wire, excluding the wait for the request to

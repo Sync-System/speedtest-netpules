@@ -22,6 +22,11 @@ const MiB = 1024 * 1024;
 const MAX_DOWNLOAD_BYTES = 200 * MiB;
 const MIN_DOWNLOAD_BYTES = 64 * 1024;
 const FILLER_BYTES = 1 * MiB;
+// The frontend never sends more than UPLOAD_CHUNK_BYTES (16 MiB, speedTest.ts)
+// in a single request; double that for headroom and reject anything past it
+// outright rather than draining an arbitrarily large body from a caller going
+// around the frontend entirely.
+const MAX_UPLOAD_BYTES = 32 * MiB;
 
 /**
  * Random filler, generated once per isolate and reused for every response.
@@ -141,6 +146,10 @@ async function handleUpload(request) {
         const { done, value } = await reader.read();
         if (done) break;
         received += value.byteLength;
+        if (received > MAX_UPLOAD_BYTES) {
+          await reader.cancel();
+          return corsJson({ error: "payload too large" }, { status: 413 });
+        }
       }
     } catch {
       // Expected, not exceptional: the client cuts every in-flight upload the
@@ -206,25 +215,68 @@ async function handleTurnCreds(env) {
     return corsJson({ error: "turn not configured" }, { status: 501 });
   }
 
-  const res = await fetch(
-    `https://rtc.live.cloudflare.com/v1/turn/keys/${env.TURN_KEY_ID}/credentials/generate-ice-servers`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.TURN_KEY_API_TOKEN}`,
-        "Content-Type": "application/json",
+  try {
+    const res = await fetch(
+      `https://rtc.live.cloudflare.com/v1/turn/keys/${env.TURN_KEY_ID}/credentials/generate-ice-servers`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.TURN_KEY_API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        // Only has to outlive one probe, which takes seconds. A short TTL keeps
+        // a leaked credential worthless almost immediately.
+        body: JSON.stringify({ ttl: 600 }),
+        // The client's own probe gives up after 12s regardless (packetLoss.ts),
+        // so there's no reason to let a hung upstream call hold this open longer.
+        signal: AbortSignal.timeout(8000),
       },
-      // Only has to outlive one probe, which takes seconds. A short TTL keeps
-      // a leaked credential worthless almost immediately.
-      body: JSON.stringify({ ttl: 600 }),
-    },
-  );
-
-  if (!res.ok) {
+    );
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    return corsJson(await res.json());
+  } catch {
+    // Network failure, timeout, non-2xx, or a malformed body all land here.
+    // Uncaught, any of these throws out of the fetch handler entirely — the
+    // Workers platform's own error page has no CORS headers, so the browser
+    // would report an opaque "Failed to fetch" instead of a readable 502.
     return corsJson({ error: "turn credential request failed" }, { status: 502 });
   }
+}
 
-  return corsJson(await res.json());
+/**
+ * Per-isolate request counter for /api/download and /api/upload — the two
+ * endpoints that move real bandwidth. Mirrors ../server/app.js's testLimiter:
+ * same 1200/60s budget, same reasoning (an accurate test is dozens of
+ * requests from parallel, restarting streams, not one).
+ *
+ * Deliberately not a global limit: Workers run many isolates across edge
+ * PoPs with no shared memory between them, so this only catches abuse that
+ * lands repeatedly on the same isolate, not a distributed attacker spread
+ * across colos. A real global per-IP limit needs Cloudflare's Rate Limiting
+ * binding or dashboard rules — both need account-side provisioning this file
+ * can't do for itself. Still worth having: it's free, and it stops the
+ * common case, which is the same justification the Express side used.
+ */
+const RATE_LIMIT = 1200;
+const RATE_WINDOW_MS = 60 * 1000;
+const rateBuckets = new Map();
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  // Sweep occasionally instead of on every call, so a long-lived isolate
+  // seeing many distinct IPs doesn't grow this map without bound.
+  if (rateBuckets.size > 10_000) {
+    for (const [key, bucket] of rateBuckets) {
+      if (now >= bucket.resetAt) rateBuckets.delete(key);
+    }
+  }
+  const bucket = rateBuckets.get(ip);
+  if (!bucket || now >= bucket.resetAt) {
+    rateBuckets.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return false;
+  }
+  bucket.count += 1;
+  return bucket.count > RATE_LIMIT;
 }
 
 export default {
@@ -242,14 +294,24 @@ export default {
           headers: { "Cache-Control": "no-store", ...CORS },
         });
 
-      case "/api/download":
+      case "/api/download": {
+        const ip = request.headers.get("CF-Connecting-IP") ?? "";
+        if (isRateLimited(ip)) {
+          return corsJson({ error: "too many requests" }, { status: 429 });
+        }
         return handleDownload(url);
+      }
 
-      case "/api/upload":
+      case "/api/upload": {
         if (request.method !== "POST") {
           return corsJson({ error: "method not allowed" }, { status: 405 });
         }
+        const ip = request.headers.get("CF-Connecting-IP") ?? "";
+        if (isRateLimited(ip)) {
+          return corsJson({ error: "too many requests" }, { status: 429 });
+        }
         return handleUpload(request);
+      }
 
       case "/api/whoami":
         return handleWhoami(request);

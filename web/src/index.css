@@ -117,6 +117,15 @@
   animation: go-invite 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* The only infinite, purely-decorative (aria-hidden) animation in the app —
+   everything else is either one-shot on load or essential motion depicting a
+   live reading, so this is the one loop worth turning off. */
+@media (prefers-reduced-motion: reduce) {
+  .go-pulse-ring {
+    animation: none;
+  }
+}
+
 body {
   margin: 0;
   background-color: var(--background);
