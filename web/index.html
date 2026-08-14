@@ -52,9 +52,16 @@
     <meta name="twitter:image" content="https://speedtest4u.com/og-image.png" />
 
     <!--
-      WebApplication structured data: tells Google this is a free, usable tool
-      (not an article or store listing), which is what the speed-test rich
-      result / sitelinks treatment keys off. Browsers never execute
+      WebApplication structured data: classifies this as a free, usable tool
+      rather than an article or store listing. Checked against Google's
+      current software-app docs (Aug 2026): this alone does not unlock any
+      visual rich result — that requires aggregateRating or review, which we
+      don't have and won't fake (house rule: no invented facts to fill a
+      tag). An earlier version of this comment claimed a "sitelinks
+      treatment" tie-in; that was wrong on two counts — sitelinks search box
+      keyed off a different schema (WebSite + SearchAction), and Google
+      retired that feature globally in Nov 2024 regardless. Kept for correct
+      classification, not for any rich-result payoff. Browsers never execute
       application/ld+json as script, so this is unaffected by the page's
       strict script-src CSP.
     -->
@@ -76,12 +83,18 @@
     </script>
 
     <!--
-      FAQPage structured data — the path to an accordion rich result directly
-      in Google's search listing, which meaningfully lifts click-through rate
-      over a plain blue link. Every answer here must match the visible FAQ
-      text in Footer.tsx word-for-word: Google requires structured data to
-      reflect real on-page content, and a mismatch risks a manual action
-      against rich-result eligibility rather than just losing it quietly.
+      FAQPage structured data. NOTE: Google deprecated the FAQ rich result
+      (dropped SERP support, the rich-results-test tool, and Search Console
+      reporting) in May–June 2026 — this no longer produces an accordion in
+      search results, despite what an earlier version of this comment
+      claimed. Kept anyway: the markup is still valid schema.org and Google
+      says unused structured data doesn't hurt, and the real value was always
+      the indexable FAQ text underneath it — close to the only body copy on a
+      page that's otherwise a single interactive tool. Every answer here must
+      still match the visible FAQ text in Footer.tsx word-for-word: that's a
+      general content-integrity rule (Google penalizes visible-content /
+      structured-data mismatches on principle), not something done to chase
+      a rich result that no longer exists.
     -->
     <script type="application/ld+json">
       {
@@ -133,7 +146,7 @@
             "name": "Why do my results change each time I test?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Server load, Wi-Fi interference, other devices on your network, and your ISP's own peak-hour congestion all shift the number run to run — true of every speed test, not just this one. Treat one result as a data point, and the History section as the more honest picture."
+              "text": "Server load, Wi-Fi interference, other devices on your network, and your ISP's own peak-hour congestion all shift the number run to run — true of every speed test, not just this one. Treat one result as a data point, and the History section below as the more honest picture."
             }
           },
           {
