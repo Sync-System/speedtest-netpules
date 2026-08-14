@@ -220,9 +220,17 @@ export function SpeedDial({
           numbers a second would be unusable. The phase change is the
           meaningful event to speak aloud; the final reading is read once,
           normally, from the result cards below. */}
+      {/* Not text-muted-foreground: this caption sits on the page background
+          (outside the dial's --card face), where muted-foreground measures
+          ~4.39:1 in light mode — just under the 4.5:1 floor (verified against
+          the real rendered page; the same gap found and fixed in AdSlot's
+          "Advertisement" label). This dedicated shade clears ~5.7:1 light /
+          ~7.8:1 dark there — worth getting right since it's the status line
+          for most of what happens on this screen. */}
       <p
         aria-live="polite"
-        className="absolute bottom-0 left-0 right-0 flex h-5 items-center justify-center text-center text-sm font-medium text-muted-foreground"
+        className="absolute bottom-0 left-0 right-0 flex h-5 items-center justify-center text-center text-sm font-medium"
+        style={{ color: "light-dark(#54627a, #9aabbd)" }}
       >
         {status}
       </p>

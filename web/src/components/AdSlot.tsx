@@ -103,11 +103,18 @@ export function AdSlot({ format, downloadMbps = null, className = "" }: AdSlotPr
       aria-label="Advertisement"
       className={`flex w-full flex-col items-center ${className}`}
     >
-      {/* Full-opacity muted-foreground, not /70: at this 10px size the diluted
-          tone measured ~2.7:1 on the light theme card, well under the 4.5:1
-          floor for text this small. Full opacity clears it (~4.8:1 light,
-          ~7.2:1 dark) while staying visually secondary to the ad itself. */}
-      <span className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+      {/* Not text-muted-foreground: this label sits directly on the page
+          background here, not on a --card — and muted-foreground against
+          --background measures only ~4.39:1 in light mode (verified against
+          the actual rendered page, not assumed from a card context), just
+          under the 4.5:1 floor for text this small. This dedicated shade
+          measures ~5.7:1 light / ~7.8:1 dark against that real background,
+          while staying close enough to muted-foreground's tone to still read
+          as secondary to the ad itself. */}
+      <span
+        className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em]"
+        style={{ color: "light-dark(#54627a, #9aabbd)" }}
+      >
         Advertisement
       </span>
       <a href={creative.href} className="block max-w-full rounded-xl transition-opacity hover:opacity-90">

@@ -14,7 +14,15 @@ export function History({ history }: HistoryProps) {
     <section id="history" className="mx-auto mt-5 w-full max-w-3xl scroll-mt-20">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs tracking-wider text-muted-foreground">HISTORY</p>
+          {/* Not text-muted-foreground: this eyebrow sits directly on the page
+              background (no --card wrapper here), where muted-foreground
+              measures ~4.39:1 in light mode — just under the 4.5:1 floor for
+              text this small (verified against the real rendered page, the
+              same gap found and fixed in AdSlot's "Advertisement" label).
+              This dedicated shade clears ~5.7:1 light / ~7.8:1 dark there. */}
+          <p className="text-xs tracking-wider" style={{ color: "light-dark(#54627a, #9aabbd)" }}>
+            HISTORY
+          </p>
           {/* Says only what's true: these are this browser's own recent runs,
               held in localStorage. The previous copy claimed "verified" tests —
               nothing verifies them, and overstating provenance is corrosive in
